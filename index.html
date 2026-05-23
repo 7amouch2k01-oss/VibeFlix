@@ -250,6 +250,13 @@
             outline: none;
             transition: all 0.3s;
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        /* Accessibility Focus */
+        :focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 4px;
         }
 
         #movie-search:focus {
@@ -543,8 +550,8 @@
 
         <div class="glass controls-container">
             <div class="search-container">
-                <input type="text" id="movie-search" placeholder="Search for movies, actors, directors...">
-                <span class="search-icon">🔍</span>
+                <input type="text" id="movie-search" placeholder="Search for movies, actors, directors..." aria-label="Search movies">
+                <span class="search-icon" aria-hidden="true">🔍</span>
             </div>
             
             <div class="sort-group">
