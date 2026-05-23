@@ -141,11 +141,17 @@ async function openDetails(movieId) {
         const movie = await res.json();
         
         const trailer = movie.videos.results.find(v => v.type === 'Trailer') || movie.videos.results[0];
-        const cast = movie.credits.cast.slice(0, 6).map(c => `
-            <div class="cast-item">
-                <img src="${c.profile_path ? CONFIG.IMAGE_BASE_URL + c.profile_path : 'https://via.placeholder.com/100x150'}" alt="${c.name}">
-                <p><strong>${c.name}</strong></p>
-                <p style="font-size:0.8rem; color:var(--text-secondary)">${c.character}</p>
+        const cast = movie.credits.cast.slice(0, 10).map(c => `
+            <div class="cast-item" onclick="event.stopPropagation(); loadActorMovies(${c.id}, '${c.name}')" style="cursor:pointer; min-width:100px; text-align:center;">
+                <img src="${c.profile_path ? CONFIG.IMAGE_BASE_URL + c.profile_path : 'https://via.placeholder.com/100x150'}" alt="${c.name}" style="width:80px; height:120px; object-fit:cover; border-radius:10px; margin-bottom:5px; border:1px solid var(--glass-border);">
+                <p style="font-size:0.8rem;"><strong>${c.name}</strong></p>
+            </div>
+        `).join('');
+
+        const similar = movie.similar.results.slice(0, 6).map(m => `
+            <div class="similar-item" onclick="openDetails(${m.id})" style="cursor:pointer; min-width:120px;">
+                <img src="${m.poster_path ? CONFIG.IMAGE_BASE_URL + m.poster_path : 'https://via.placeholder.com/500x750'}" alt="${m.title}" style="width:100%; border-radius:10px; border:1px solid var(--glass-border);">
+                <p style="font-size:0.7rem; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${m.title}</p>
             </div>
         `).join('');
 
@@ -166,16 +172,26 @@ async function openDetails(movieId) {
                     <p style="font-size:1.2rem; line-height:1.6; margin-bottom:30px;">${movie.overview}</p>
                     
                     <h3 style="margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Top Cast</h3>
-                    <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:20px;">${cast}</div>
+                    <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:20px; scrollbar-width:thin;">${cast}</div>
+
+                    <h3 style="margin-top:30px; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Similar Movies</h3>
+                    <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:20px;">${similar}</div>
                 </div>
                 <div>
                     ${trailer ? `
                         <h3 style="margin-bottom:20px;">Trailer</h3>
-                        <iframe width="100%" height="200" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen style="border-radius:15px;"></iframe>
+                        <div style="position:relative; padding-bottom:56.25%; height:0; border-radius:15px; overflow:hidden; border:1px solid var(--glass-border);">
+                            <iframe style="position:absolute; top:0; left:0; width:100%; height:100%;" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen></iframe>
+                        </div>
                     ` : ''}
-                    <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="toggleWatchlistById(${movie.id})">
+                    <button class="btn btn-primary" style="width:100%; margin-top:25px;" onclick="toggleWatchlistById(${movie.id}); this.textContent = isInWatchlist(${movie.id}) ? 'Remove from Watchlist' : 'Add to Watchlist'">
                         ${isInWatchlist(movie.id) ? 'Remove from Watchlist' : 'Add to Watchlist'}
                     </button>
+                    <div style="margin-top:30px; background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; border:1px solid var(--glass-border);">
+                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;"><strong>Status:</strong> ${movie.status}</p>
+                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;"><strong>Budget:</strong> $${movie.budget.toLocaleString()}</p>
+                        <p style="color:var(--text-secondary); font-size:0.9rem;"><strong>Revenue:</strong> $${movie.revenue.toLocaleString()}</p>
+                    </div>
                 </div>
             </div>
         `;
@@ -323,4 +339,23 @@ function sortMovies(movies, method) {
     if (method === 'rating') return sorted.sort((a, b) => b.vote_average - a.vote_average);
     if (method === 'release-date') return sorted.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
     return sorted.sort((a, b) => b.popularity - a.popularity);
+}
+
+async function loadActorMovies(actorId, actorName) {
+    showLoading(true);
+    movieModal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    try {
+        const res = await fetch(`${CONFIG.BASE_URL}/person/${actorId}/movie_credits?api_key=${CONFIG.API_KEY}`);
+        const data = await res.json();
+        allMovies = data.cast.sort((a, b) => b.popularity - a.popularity).slice(0, 20);
+        renderMovies(allMovies);
+        document.getElementById('main-title').textContent = actorName;
+        document.querySelector('.subtitle').textContent = `Filmography`;
+        window.scrollTo({ top: 500, behavior: 'smooth' });
+    } catch (err) {
+        showError("Failed to load actor's movies.");
+    } finally {
+        showLoading(false);
+    }
 }
