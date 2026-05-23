@@ -48,42 +48,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function setupEventListeners() {
     // Smart Search (Debounced)
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        const query = e.target.value.trim();
-        searchTimeout = setTimeout(() => {
-            if (query.length > 2) {
-                searchMovies(query);
-            } else if (query.length === 0) {
-                loadTrending();
-            }
-        }, CONFIG.DEBOUNCE_DELAY);
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            searchTimeout = setTimeout(() => {
+                if (query.length > 2) {
+                    searchMovies(query);
+                } else if (query.length === 0) {
+                    loadTrending();
+                }
+            }, CONFIG.DEBOUNCE_DELAY);
+        });
+    }
 
     // Sorting
-    sortSelect.addEventListener('change', () => {
-        renderMovies(sortMovies(allMovies, sortSelect.value));
-    });
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            renderMovies(sortMovies(allMovies, sortSelect.value));
+        });
+    }
 
     // Watchlist Toggle
-    watchlistBtn.addEventListener('click', () => {
-        const isShowing = watchlistContainer.style.display === 'block';
-        watchlistContainer.style.display = isShowing ? 'none' : 'block';
-        document.querySelector('main').style.display = isShowing ? 'block' : 'none';
-        if (!isShowing) renderWatchlist();
-    });
+    if (watchlistBtn) {
+        watchlistBtn.addEventListener('click', () => {
+            const isShowing = watchlistContainer.style.display === 'block';
+            watchlistContainer.style.display = isShowing ? 'none' : 'block';
+            document.querySelector('main').style.display = isShowing ? 'block' : 'none';
+            if (!isShowing) renderWatchlist();
+        });
+    }
 
     // Modal Close
-    modalClose.addEventListener('click', () => {
-        movieModal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-    });
+    if (modalClose) {
+        modalClose.addEventListener('click', () => {
+            movieModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+    }
 
     // Back to Top
     window.addEventListener('scroll', () => {
-        backToTopBtn.style.display = window.scrollY > 500 ? 'flex' : 'none';
+        if (backToTopBtn) {
+            backToTopBtn.style.display = window.scrollY > 500 ? 'flex' : 'none';
+        }
     });
-    backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    if (backToTopBtn) {
+        backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    }
 }
 
 // API Calls
@@ -92,9 +104,10 @@ async function loadTrending() {
     try {
         const res = await fetch(`${CONFIG.BASE_URL}/trending/movie/week?api_key=${CONFIG.API_KEY}`);
         const data = await res.json();
-        allMovies = data.results;
+        allMovies = data.results || [];
         renderMovies(allMovies);
     } catch (err) {
+        console.error("Trending load failed", err);
         showError("Failed to load trending movies.");
     } finally {
         showLoading(false);
@@ -106,9 +119,10 @@ async function searchMovies(query) {
     try {
         const res = await fetch(`${CONFIG.BASE_URL}/search/movie?api_key=${CONFIG.API_KEY}&query=${encodeURIComponent(query)}`);
         const data = await res.json();
-        allMovies = data.results;
+        allMovies = data.results || [];
         renderMovies(allMovies);
     } catch (err) {
+        console.error("Search failed", err);
         showError("Search failed.");
     } finally {
         showLoading(false);
@@ -119,16 +133,30 @@ async function loadHero() {
     try {
         const res = await fetch(`${CONFIG.BASE_URL}/movie/now_playing?api_key=${CONFIG.API_KEY}`);
         const data = await res.json();
-        const movie = data.results[0];
-        
-        document.getElementById('hero-backdrop').style.backgroundImage = `url(${CONFIG.BACKDROP_BASE_URL}${movie.backdrop_path})`;
-        document.getElementById('hero-title').textContent = movie.title;
-        document.getElementById('hero-rating').textContent = movie.vote_average.toFixed(1);
-        document.getElementById('hero-year').textContent = movie.release_date.split('-')[0];
-        document.getElementById('hero-overview').textContent = movie.overview.length > 200 ? movie.overview.substring(0, 200) + '...' : movie.overview;
-        
-        document.getElementById('hero-trailer-btn').onclick = () => openDetails(movie.id);
-        document.getElementById('hero-watchlist-btn').onclick = () => toggleWatchlist(movie);
+        if (data.results && data.results.length > 0) {
+            const movie = data.results[0];
+            
+            const heroBackdrop = document.getElementById('hero-backdrop');
+            if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(${CONFIG.BACKDROP_BASE_URL}${movie.backdrop_path})`;
+            
+            const heroTitle = document.getElementById('hero-title');
+            if (heroTitle) heroTitle.textContent = movie.title;
+            
+            const heroRating = document.getElementById('hero-rating');
+            if (heroRating) heroRating.textContent = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+            
+            const heroYear = document.getElementById('hero-year');
+            if (heroYear) heroYear.textContent = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+            
+            const heroOverview = document.getElementById('hero-overview');
+            if (heroOverview) heroOverview.textContent = movie.overview.length > 200 ? movie.overview.substring(0, 200) + '...' : movie.overview;
+            
+            const heroTrailerBtn = document.getElementById('hero-trailer-btn');
+            if (heroTrailerBtn) heroTrailerBtn.onclick = () => openDetails(movie.id);
+            
+            const heroWatchlistBtn = document.getElementById('hero-watchlist-btn');
+            if (heroWatchlistBtn) heroWatchlistBtn.onclick = () => toggleWatchlist(movie);
+        }
     } catch (err) {
         console.error("Hero load failed", err);
     }
@@ -140,65 +168,71 @@ async function openDetails(movieId) {
         const res = await fetch(`${CONFIG.BASE_URL}/movie/${movieId}?api_key=${CONFIG.API_KEY}&append_to_response=videos,credits,similar`);
         const movie = await res.json();
         
-        const trailer = movie.videos.results.find(v => v.type === 'Trailer') || movie.videos.results[0];
-        const cast = movie.credits.cast.slice(0, 10).map(c => `
-            <div class="cast-item" onclick="event.stopPropagation(); loadActorMovies(${c.id}, '${c.name}')" style="cursor:pointer; min-width:100px; text-align:center;">
+        const trailer = movie.videos?.results?.find(v => v.type === 'Trailer') || movie.videos?.results?.[0];
+        const cast = movie.credits?.cast?.slice(0, 10).map(c => `
+            <div class="cast-item" onclick="event.stopPropagation(); loadActorMovies(${c.id}, '${c.name.replace(/'/g, "\\'")}')" style="cursor:pointer; min-width:100px; text-align:center;">
                 <img src="${c.profile_path ? CONFIG.IMAGE_BASE_URL + c.profile_path : 'https://via.placeholder.com/100x150'}" alt="${c.name}" style="width:80px; height:120px; object-fit:cover; border-radius:10px; margin-bottom:5px; border:1px solid var(--glass-border);">
                 <p style="font-size:0.8rem;"><strong>${c.name}</strong></p>
             </div>
-        `).join('');
+        `).join('') || 'No cast information available.';
 
-        const similar = movie.similar.results.slice(0, 6).map(m => `
+        const similar = movie.similar?.results?.slice(0, 6).map(m => `
             <div class="similar-item" onclick="openDetails(${m.id})" style="cursor:pointer; min-width:120px;">
                 <img src="${m.poster_path ? CONFIG.IMAGE_BASE_URL + m.poster_path : 'https://via.placeholder.com/500x750'}" alt="${m.title}" style="width:100%; border-radius:10px; border:1px solid var(--glass-border);">
                 <p style="font-size:0.7rem; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${m.title}</p>
             </div>
-        `).join('');
+        `).join('') || 'No similar movies found.';
 
-        document.getElementById('modal-details-content').innerHTML = `
-            <div style="position:relative; height:400px;">
-                <img src="${CONFIG.BACKDROP_BASE_URL}${movie.backdrop_path}" style="width:100%; height:100%; object-fit:cover;">
-                <div style="position:absolute; inset:0; background:linear-gradient(to top, #111, transparent); padding:40px; display:flex; align-items:flex-end;">
-                    <h2 style="font-size:3rem;">${movie.title}</h2>
-                </div>
-            </div>
-            <div style="padding:40px; display:grid; grid-template-columns: 2fr 1fr; gap:40px;">
-                <div>
-                    <div style="display:flex; gap:20px; margin-bottom:20px;">
-                        <span class="genre-btn active">${movie.release_date.split('-')[0]}</span>
-                        <span class="genre-btn active">★ ${movie.vote_average.toFixed(1)}</span>
-                        <span class="genre-btn active">${movie.runtime} min</span>
+        const detailsContent = document.getElementById('modal-details-content');
+        if (detailsContent) {
+            detailsContent.innerHTML = `
+                <div style="position:relative; height:400px;">
+                    <img src="${movie.backdrop_path ? CONFIG.BACKDROP_BASE_URL + movie.backdrop_path : 'https://via.placeholder.com/1280x720'}" style="width:100%; height:100%; object-fit:cover;">
+                    <div style="position:absolute; inset:0; background:linear-gradient(to top, #111, transparent); padding:40px; display:flex; align-items:flex-end;">
+                        <h2 style="font-size:3rem;">${movie.title}</h2>
                     </div>
-                    <p style="font-size:1.2rem; line-height:1.6; margin-bottom:30px;">${movie.overview}</p>
-                    
-                    <h3 style="margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Top Cast</h3>
-                    <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:20px; scrollbar-width:thin;">${cast}</div>
-
-                    <h3 style="margin-top:30px; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Similar Movies</h3>
-                    <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:20px;">${similar}</div>
                 </div>
-                <div>
-                    ${trailer ? `
-                        <h3 style="margin-bottom:20px;">Trailer</h3>
-                        <div style="position:relative; padding-bottom:56.25%; height:0; border-radius:15px; overflow:hidden; border:1px solid var(--glass-border);">
-                            <iframe style="position:absolute; top:0; left:0; width:100%; height:100%;" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen></iframe>
+                <div style="padding:40px; display:grid; grid-template-columns: 2fr 1fr; gap:40px;">
+                    <div>
+                        <div style="display:flex; gap:20px; margin-bottom:20px;">
+                            <span class="genre-btn active">${movie.release_date ? movie.release_date.split('-')[0] : 'N/A'}</span>
+                            <span class="genre-btn active">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</span>
+                            <span class="genre-btn active">${movie.runtime || 'N/A'} min</span>
                         </div>
-                    ` : ''}
-                    <button class="btn btn-primary" style="width:100%; margin-top:25px;" onclick="toggleWatchlistById(${movie.id}); this.textContent = isInWatchlist(${movie.id}) ? 'Remove from Watchlist' : 'Add to Watchlist'">
-                        ${isInWatchlist(movie.id) ? 'Remove from Watchlist' : 'Add to Watchlist'}
-                    </button>
-                    <div style="margin-top:30px; background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; border:1px solid var(--glass-border);">
-                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;"><strong>Status:</strong> ${movie.status}</p>
-                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;"><strong>Budget:</strong> $${movie.budget.toLocaleString()}</p>
-                        <p style="color:var(--text-secondary); font-size:0.9rem;"><strong>Revenue:</strong> $${movie.revenue.toLocaleString()}</p>
+                        <p style="font-size:1.2rem; line-height:1.6; margin-bottom:30px;">${movie.overview || 'No overview available.'}</p>
+                        
+                        <h3 style="margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Top Cast</h3>
+                        <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:20px; scrollbar-width:thin;">${cast}</div>
+
+                        <h3 style="margin-top:30px; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Similar Movies</h3>
+                        <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:20px;">${similar}</div>
+                    </div>
+                    <div>
+                        ${trailer ? `
+                            <h3 style="margin-bottom:20px;">Trailer</h3>
+                            <div style="position:relative; padding-bottom:56.25%; height:0; border-radius:15px; overflow:hidden; border:1px solid var(--glass-border);">
+                                <iframe style="position:absolute; top:0; left:0; width:100%; height:100%;" src="https://www.youtube.com/embed/${trailer.key}" frameborder="0" allowfullscreen></iframe>
+                            </div>
+                        ` : ''}
+                        <button class="btn btn-primary" style="width:100%; margin-top:25px;" onclick="toggleWatchlistById(${movie.id}); this.textContent = isInWatchlist(${movie.id}) ? 'Remove from Watchlist' : 'Add to Watchlist'">
+                            ${isInWatchlist(movie.id) ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                        </button>
+                        <div style="margin-top:30px; background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; border:1px solid var(--glass-border);">
+                            <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;"><strong>Status:</strong> ${movie.status || 'N/A'}</p>
+                            <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;"><strong>Budget:</strong> ${movie.budget ? '$' + movie.budget.toLocaleString() : 'N/A'}</p>
+                            <p style="color:var(--text-secondary); font-size:0.9rem;"><strong>Revenue:</strong> ${movie.revenue ? '$' + movie.revenue.toLocaleString() : 'N/A'}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
         
-        movieModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        if (movieModal) {
+            movieModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
     } catch (err) {
+        console.error("Details load failed", err);
         showError("Failed to load movie details.");
     } finally {
         showLoading(false);
@@ -207,12 +241,15 @@ async function openDetails(movieId) {
 
 // UI Rendering
 function renderMovies(movies) {
+    if (!movieGrid) return;
     movieGrid.innerHTML = '';
-    if (movies.length === 0) {
-        document.getElementById('empty-state').style.display = 'block';
+    if (!movies || movies.length === 0) {
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.style.display = 'block';
         return;
     }
-    document.getElementById('empty-state').style.display = 'none';
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) emptyState.style.display = 'none';
 
     movies.forEach(movie => {
         const card = document.createElement('div');
@@ -221,7 +258,7 @@ function renderMovies(movies) {
         
         card.innerHTML = `
             <div class="poster-container">
-                <div class="rating-badge">★ ${movie.vote_average.toFixed(1)}</div>
+                <div class="rating-badge">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
                 <button class="watchlist-btn-card ${inWatchlist ? 'added' : ''}" onclick="event.stopPropagation(); toggleWatchlistById(${movie.id})">
                     ${inWatchlist ? '♥' : '♡'}
                 </button>
@@ -234,7 +271,7 @@ function renderMovies(movies) {
                 <h3 class="movie-title">${movie.title}</h3>
                 <div class="movie-meta">
                     <span>${movie.release_date ? movie.release_date.split('-')[0] : 'N/A'}</span>
-                    <span>${GENRES[movie.genre_ids[0]] || 'Movie'}</span>
+                    <span>${movie.genre_ids && movie.genre_ids.length > 0 ? GENRES[movie.genre_ids[0]] || 'Movie' : 'Movie'}</span>
                 </div>
             </div>
         `;
@@ -244,6 +281,7 @@ function renderMovies(movies) {
 }
 
 function initGenres() {
+    if (!genreFilter) return;
     Object.entries(GENRES).forEach(([id, name]) => {
         const btn = document.createElement('button');
         btn.className = 'genre-btn';
@@ -262,9 +300,10 @@ async function filterByGenre(id) {
     try {
         const res = await fetch(`${CONFIG.BASE_URL}/discover/movie?api_key=${CONFIG.API_KEY}&with_genres=${id}`);
         const data = await res.json();
-        allMovies = data.results;
+        allMovies = data.results || [];
         renderMovies(allMovies);
     } catch (err) {
+        console.error("Filter failed", err);
         showError("Filter failed.");
     } finally {
         showLoading(false);
@@ -287,7 +326,7 @@ function toggleWatchlist(movie) {
     localStorage.setItem('mosmaWatchlist', JSON.stringify(watchlist));
     updateWatchlistUI();
     renderMovies(allMovies); // Refresh main grid icons
-    if (watchlistContainer.style.display === 'block') renderWatchlist();
+    if (watchlistContainer && watchlistContainer.style.display === 'block') renderWatchlist();
 }
 
 function isInWatchlist(id) {
@@ -300,6 +339,7 @@ function updateWatchlistUI() {
 }
 
 function renderWatchlist() {
+    if (!watchlistGrid) return;
     watchlistGrid.innerHTML = '';
     if (watchlist.length === 0) {
         watchlistGrid.innerHTML = '<p style="grid-column:1/-1; text-align:center; padding:50px;">Your watchlist is empty.</p>';
@@ -324,36 +364,46 @@ function renderWatchlist() {
 
 // Helpers
 function showLoading(show) {
-    document.getElementById('loading-spinner').style.display = show ? 'block' : 'none';
+    const spinner = document.getElementById('loading-spinner');
+    if (spinner) spinner.style.display = show ? 'block' : 'none';
 }
 
 function showError(msg) {
     const err = document.getElementById('error-message');
-    err.textContent = msg;
-    err.style.display = 'block';
-    setTimeout(() => err.style.display = 'none', 3000);
+    if (err) {
+        err.textContent = msg;
+        err.style.display = 'block';
+        setTimeout(() => err.style.display = 'none', 3000);
+    }
 }
 
 function sortMovies(movies, method) {
+    if (!movies) return [];
     const sorted = [...movies];
-    if (method === 'rating') return sorted.sort((a, b) => b.vote_average - a.vote_average);
-    if (method === 'release-date') return sorted.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
-    return sorted.sort((a, b) => b.popularity - a.popularity);
+    if (method === 'rating') return sorted.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+    if (method === 'release-date') return sorted.sort((a, b) => new Date(b.release_date || 0) - new Date(a.release_date || 0));
+    return sorted.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 }
 
 async function loadActorMovies(actorId, actorName) {
     showLoading(true);
-    movieModal.style.display = 'none';
+    if (movieModal) movieModal.style.display = 'none';
     document.body.style.overflow = 'auto';
     try {
         const res = await fetch(`${CONFIG.BASE_URL}/person/${actorId}/movie_credits?api_key=${CONFIG.API_KEY}`);
         const data = await res.json();
-        allMovies = data.cast.sort((a, b) => b.popularity - a.popularity).slice(0, 20);
+        allMovies = (data.cast || []).sort((a, b) => (b.popularity || 0) - (a.popularity || 0)).slice(0, 20);
         renderMovies(allMovies);
-        document.getElementById('main-title').textContent = actorName;
-        document.querySelector('.subtitle').textContent = `Filmography`;
+        
+        const mainTitle = document.getElementById('main-title');
+        if (mainTitle) mainTitle.textContent = actorName;
+        
+        const subtitle = document.querySelector('.subtitle');
+        if (subtitle) subtitle.textContent = `Filmography`;
+        
         window.scrollTo({ top: 500, behavior: 'smooth' });
     } catch (err) {
+        console.error("Actor movies load failed", err);
         showError("Failed to load actor's movies.");
     } finally {
         showLoading(false);
