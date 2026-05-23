@@ -173,7 +173,8 @@ async function openDetails(movieId) {
             </div>
         `;
         movieModal.style.display = 'block';
-        document.body.style.overflow = 'hidden';
+        movieModal.scrollTop = 0; // Reset scroll position when opening
+        document.body.style.overflow = 'hidden'; // Lock background scroll
     } catch (err) { showError("Failed to load details."); } finally { showLoading(false); }
 }
 

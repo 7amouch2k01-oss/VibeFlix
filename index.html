@@ -381,19 +381,22 @@
             z-index: 2000;
             background: rgba(0,0,0,0.9);
             backdrop-filter: blur(15px);
-            padding: 40px 5%;
+            -webkit-backdrop-filter: blur(15px);
+            padding: 40px 20px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll for iOS */
         }
 
         .modal-content {
             background: #0a0a0a;
             max-width: 1100px;
-            margin: 0 auto;
+            margin: 20px auto; /* Add margin for better scroll breathing room */
             border-radius: 20px;
             overflow: hidden;
             border: 1px solid var(--glass-border);
             position: relative;
             animation: modalSlideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
         }
 
         @keyframes modalSlideUp {
