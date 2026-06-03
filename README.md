@@ -3,6 +3,8 @@
 ## Overview
 
 VibeFlix is a dynamic web application that allows users to discover movies, view details, search by genre, and manage a personal watchlist. It leverages The Movie Database (TMDb) API to provide up-to-date information on trending movies, search results, and detailed movie profiles, including trailers and cast information.
+## check this link 
+https://7amouch2k01-oss.github.io/VibeFlix/
 
 ## Features
 
